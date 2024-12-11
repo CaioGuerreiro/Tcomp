@@ -1,67 +1,150 @@
 import pandas as pd
 
-nfa = {}
-n = int(input("number of states: "))
-t = int (input("number of transitions: "))
+# Função para ler o arquivo e organizar os dados
+def parse_nfa(file_path):
+    nfa = {}
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+    
+    # Processar estados (Q)
+    states_line = [line for line in lines if line.startswith("Q:")][0]  
+    states = states_line.split(":")[1].strip().split(", ")
+    
+    # Inicializar o NFA com estados e alfabeto
+    for state in states:
+        nfa[state] = {}
+    
+    # Processar alfabeto (A)
+    alphabet_line = [line for line in lines if line.startswith("A:")][0]
+    alphabet = alphabet_line.split(":")[1].strip().split(", ")
+    
+    for state in nfa:
+        for symbol in alphabet:
+            nfa[state][symbol] = []  # Inicializar todas as transições como listas vazias
+    
+    # Processar transições (T)
+    transitions_line = [line for line in lines if line.startswith("T:")][0]
+    transitions_index = lines.index(transitions_line) + 1
+    transitions = lines[transitions_index:]
+    for transition in transitions:
+        if "->" in transition:
+            left, right = transition.split(" -> ")
+            state, symbol = left.split(",")
+            state, symbol = state.strip(), symbol.strip()
+            destinations = right.strip().split(", ")
+            nfa[state][symbol].extend(destinations)
+    
+    # Processar estado inicial (q0)
+    initial_line = [line for line in lines if "inicial" in line][0]
+    initial_state = initial_line.split(":")[1].strip()
+    
+    # Processar estados finais (F)
+    final_line = [line for line in lines if line.startswith("F:")][0]
+    final_states = final_line.split(":")[1].strip().split(", ")
+    
+    # Processar palavra (w)
+    word_line = [line for line in lines if line.startswith("w:")][0]
+    word = word_line.split(":")[1].strip()
+    
+    return nfa, states, alphabet, initial_state, final_states, word
 
-for i in range(n):
-    state = input("state name: ")
-    nfa[state] = {}
-    for j in range(t):
-        path = input ("path: ")
-        print(f"Enter end state from state {state} travelling through path {path}: ")
-        reaching_state = [x for x in input().split()]
-        nfa[state][path] = reaching_state
+# Função para converter NFA em DFA
+def nfa_to_dfa(nfa, alphabet, initial_state, final_states):
+    # Inicializar estruturas do DFA
+    dfa = {}
+    dfa_states = []
+    dfa_final_states = []
+    queue = []
+    
+    # Estado inicial do DFA é o conjunto que contém apenas o estado inicial da NFA
+    start_state = initial_state  # Usando o nome do estado inicial diretamente (sem vírgula)
+    queue.append(start_state)
+    dfa_states.append(start_state)
+    dfa[start_state] = {}
 
-print("\nNFA :\n")
+    # Processar a fila de estados
+    while queue:
+        current_state = queue.pop(0)
+        dfa[current_state] = {}
+        
+        # Para cada símbolo do alfabeto
+        for symbol in alphabet:
+            # Determinar os estados alcançáveis a partir do estado atual
+            next_states = set()
+            for substate in current_state.split():
+                if substate in nfa and symbol in nfa[substate]:
+                    next_states.update(nfa[substate][symbol])
+            
+            # Criar o novo estado (conjunto de estados da NFA) como uma string
+            next_state = " ".join(sorted(next_states))  # Juntando os estados com espaço
+            
+            # Adicionar transição no DFA
+            dfa[current_state][symbol] = [next_state]
+            
+            # Se o novo estado não estiver no DFA, adicionar à fila
+            if next_state not in dfa_states:
+                dfa_states.append(next_state)
+                queue.append(next_state)
+    
+    # Determinar os estados finais do DFA
+    for dfa_state in dfa_states:
+        if any(state in final_states for state in dfa_state.split()):
+            dfa_final_states.append(dfa_state)
+    
+    # Adicionar estado morto para garantir transições completas
+    dead_state = "D"  # Estado morto representado por uma string vazia
+    if dead_state not in dfa:
+        dfa[dead_state] = {symbol: dead_state for symbol in alphabet}
+    for state in dfa:
+        for symbol in alphabet:
+            if symbol not in dfa[state]:
+                dfa[state][symbol] = dead_state
+
+    return dfa, dfa_final_states
+
+# def reverse(dfa):
+#     dfa[state][symbol]
+
+
+# Caminho do arquivo
+file_path = "input.txt"
+
+# Processar o arquivo
+nfa, states, alphabet, initial_state, final_states, word = parse_nfa(file_path)
+
+# Exibir o NFA
+print("\nNFA:")
 print(nfa)
-print("\nPrinting NFA table: ")
+
+# Converter NFA em DFA
+dfa, dfa_final_states = nfa_to_dfa(nfa, alphabet, initial_state, final_states)
+
+# Exibir o DFA
+print("\nDFA:")
+print(dfa)
+
+# Exibir estados finais do DFA
+print("\nFinal states of DFA:", dfa_final_states)
+
+# Exibir tabelas
+print("\nNFA Table:")
 nfa_table = pd.DataFrame(nfa)
 print(nfa_table.transpose())
 
-print("Enter final state of NFA: ")
-nfa_final_state = [x for x in input().split()]
-
-new_states_list = []
-dfa = {}
-keys_list = list(nfa.keys()) #aqui deu problema
-path_list = list(nfa[keys_list[0]].keys())
-
-dfa[keys_list[0]] = {}
-for y in range(t):
-    var = "".join(nfa[keys_list[0]][path_list[y]])
-    dfa[keys_list[0]][path_list[y]] = var
-    if var not in keys_list:
-        new_states_list.append(var)
-        keys_list.append(var)
-
-while len(new_states_list) != 0:
-    current_state = new_states_list[0]
-    dfa[current_state] = {}
-    for path in path_list:
-        temp = []
-        for state in current_state:
-            temp += nfa[state][path]
-        new_state = "".join(sorted(set(temp)))
-        dfa[current_state][path] = new_state
-        if new_state not in keys_list:
-            new_states_list.append(new_state)
-            keys_list.append(new_state)
-    new_states_list.remove(current_state)
-
-
-print("\nDFA: \n")
-print(dfa)
-print("\nPrinting DFA table")
+print("\nDFA Table:")
 dfa_table = pd.DataFrame(dfa)
 print(dfa_table.transpose())
 
-dfa_states_list = list(dfa.keys())
-dfa_final_states = []
-for x in dfa_states_list:
-    for i in x:
-        if i in nfa_final_state:
-            dfa_final_states.append(x)
-            break
+# Verificar se a palavra é aceita pelo DFA
+current_state = initial_state
+for symbol in word:
+    if symbol in dfa[current_state]:
+        current_state = dfa[current_state][symbol][0]
+    else:
+        current_state = ""
+        break
 
-print("\n Final states of the DFA are : ", dfa_final_states)
+if current_state in dfa_final_states:
+    print(f"\nThe word '{word}' is accepted by the DFA.")
+else:
+    print(f"\nThe word '{word}' is not accepted by the DFA.")

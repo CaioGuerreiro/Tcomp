@@ -1,0 +1,9 @@
+Q: q0, q1, q2
+A: a, b
+T:
+q0, b -> q1
+q1, a -> q0, q2
+q2, b -> q2, q0
+inicial: q2
+F: q0
+w: aaaa
