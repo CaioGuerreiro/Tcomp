@@ -91,19 +91,51 @@ def nfa_to_dfa(nfa, alphabet, initial_state, final_states):
         if any(state in final_states for state in dfa_state.split()):
             dfa_final_states.append(dfa_state)
     
-    # Adicionar estado morto para garantir transições completas
-    dead_state = "D"  # Estado morto representado por uma string vazia
-    if dead_state not in dfa:
-        dfa[dead_state] = {symbol: dead_state for symbol in alphabet}
-    for state in dfa:
-        for symbol in alphabet:
-            if symbol not in dfa[state]:
-                dfa[state][symbol] = dead_state
 
     return dfa, dfa_final_states
 
-# def reverse(dfa):
-#     dfa[state][symbol]
+
+
+
+
+#COMEÇA A FUNÇÃO AQUI
+def reverse_dfa(dfa, initial_state, final_states, alphabet):
+    # Inicializar o autômato reverso
+    reversed_dfa = {state: {symbol: [] for symbol in alphabet} for state in dfa}
+    
+    # Inverter as transições
+    for state, transitions in dfa.items():
+        for symbol, targets in transitions.items():
+            if not isinstance(targets, list):
+                targets = [targets]  # Certificar-se de que `targets` é uma lista
+            for target in targets:
+                if target not in reversed_dfa:
+                    reversed_dfa[target] = {symbol: [] for symbol in alphabet}
+                reversed_dfa[target][symbol].append(state)
+    
+    # Determinar o novo estado inicial (conjunto dos antigos estados finais)
+    reversed_initial_state = final_states[:]
+    
+    # Determinar os novos estados finais (o antigo estado inicial)
+    reversed_final_states = [initial_state]
+    
+    # Retornar o autômato reverso
+    return reversed_dfa, reversed_initial_state, reversed_final_states
+
+
+#ACABA A FUNÇÃO AQUI
+
+
+def complement_dfa(dfa, states, initial_state, final_states):
+    # Determinar os estados não finais
+    non_final_states = [state for state in states if state not in final_states]
+    
+    # O complemento do DFA usa os estados não finais como novos estados finais
+    complemented_final_states = non_final_states
+    # O DFA original permanece o mesmo em termos de transições
+    return dfa, complemented_final_states
+
+
 
 
 # Caminho do arquivo
@@ -118,6 +150,19 @@ print(nfa)
 
 # Converter NFA em DFA
 dfa, dfa_final_states = nfa_to_dfa(nfa, alphabet, initial_state, final_states)
+
+#Invertendo DFA
+dfa_reverso, incial_reverso, final_reverso = reverse_dfa(dfa, initial_state, final_states, alphabet) 
+print("\n DFA INVERTIDO")
+print(dfa_reverso)
+
+#Complemento DFA
+dfa_complemento, dfa_estado_final = complement_dfa(dfa, states, initial_state, final_states)
+print("\nDFA COMPLEMENTO")
+print(dfa_complemento)
+print("\nEstados finais: ")
+print(dfa_estado_final)
+
 
 # Exibir o DFA
 print("\nDFA:")
@@ -134,6 +179,11 @@ print(nfa_table.transpose())
 print("\nDFA Table:")
 dfa_table = pd.DataFrame(dfa)
 print(dfa_table.transpose())
+
+print("\nDFA reveso: ")
+dfa_reverso_table = pd.DataFrame(dfa_reverso)
+print(dfa_reverso_table.transpose())
+
 
 # Verificar se a palavra é aceita pelo DFA
 current_state = initial_state
