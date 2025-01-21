@@ -8,5 +8,5 @@ q1, b -> q0
 q2, a -> q2
 q2, b -> q2
 inicial: q0
-F: q2
+F: q2,q1
 w: aaaa

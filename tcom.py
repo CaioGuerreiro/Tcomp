@@ -1,200 +1,184 @@
 import pandas as pd
 
-# Função para ler o arquivo e organizar os dados
-def parse_nfa(file_path):
-    nfa = {}
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
+#Função que lê o arquivo e organiza os dados
+def ler_afn(caminho_arquivo):
+    afn = {}
+    with open(caminho_arquivo, 'r') as arquivo:
+        linhas = arquivo.readlines()
     
-    # Processar estados (Q)
-    states_line = [line for line in lines if line.startswith("Q:")][0]  
-    states = states_line.split(":")[1].strip().split(", ")
+    #Processar estados (Q)
+    linha_estados = [linha for linha in linhas if linha.startswith("Q:")][0]  
+    estados = linha_estados.split(":")[1].strip().split(", ")
     
-    # Inicializar o NFA com estados e alfabeto
-    for state in states:
-        nfa[state] = {}
+    for estado in estados:
+        afn[estado] = {}
     
-    # Processar alfabeto (A)
-    alphabet_line = [line for line in lines if line.startswith("A:")][0]
-    alphabet = alphabet_line.split(":")[1].strip().split(", ")
+    #Processar alfabeto (A)
+    linha_alfabeto = [linha for linha in linhas if linha.startswith("A:")][0]
+    alfabeto = linha_alfabeto.split(":")[1].strip().split(", ")
     
-    for state in nfa:
-        for symbol in alphabet:
-            nfa[state][symbol] = []  # Inicializar todas as transições como listas vazias
+    for estado in afn:
+        for simbolo in alfabeto:
+            afn[estado][simbolo] = []
     
-    # Processar transições (T)
-    transitions_line = [line for line in lines if line.startswith("T:")][0]
-    transitions_index = lines.index(transitions_line) + 1
-    transitions = lines[transitions_index:]
-    for transition in transitions:
-        if "->" in transition:
-            left, right = transition.split(" -> ")
-            state, symbol = left.split(",")
-            state, symbol = state.strip(), symbol.strip()
-            destinations = right.strip().split(", ")
-            nfa[state][symbol].extend(destinations)
+    #Processar transições (T)
+    linha_transicoes = [linha for linha in linhas if linha.startswith("T:")][0]
+    indice_transicoes = linhas.index(linha_transicoes) + 1
+    transicoes = linhas[indice_transicoes:]
+    for transicao in transicoes:
+        if "->" in transicao:
+            esquerda, direita = transicao.split(" -> ")
+            estado, simbolo = esquerda.split(",")
+            estado, simbolo = estado.strip(), simbolo.strip()
+            destinos = direita.strip().split(", ")
+            afn[estado][simbolo].extend(destinos)
     
-    # Processar estado inicial (q0)
-    initial_line = [line for line in lines if "inicial" in line][0]
-    initial_state = initial_line.split(":")[1].strip()
+    #Processar estado inicial (q0)
+    linha_inicial = [linha for linha in linhas if "inicial" in linha][0]
+    estado_inicial = linha_inicial.split(":")[1].strip()
     
-    # Processar estados finais (F)
-    final_line = [line for line in lines if line.startswith("F:")][0]
-    final_states = final_line.split(":")[1].strip().split(", ")
+    #Processar estados finais (F)
+    linha_finais = [linha for linha in linhas if linha.startswith("F:")][0]
+    estados_finais = linha_finais.split(":")[1].strip().split(", ")
     
-    # Processar palavra (w)
-    word_line = [line for line in lines if line.startswith("w:")][0]
-    word = word_line.split(":")[1].strip()
+    #Processar palavra (w)
+    linha_palavra = [linha for linha in linhas if linha.startswith("w:")][0]
+    palavra = linha_palavra.split(":")[1].strip()
     
-    return nfa, states, alphabet, initial_state, final_states, word
+    return afn, estados, alfabeto, estado_inicial, estados_finais, palavra
 
-# Função para converter NFA em DFA
-def nfa_to_dfa(nfa, alphabet, initial_state, final_states):
-    # Inicializar estruturas do DFA
-    dfa = {}
-    dfa_states = []
-    dfa_final_states = []
-    queue = []
-    
-    # Estado inicial do DFA é o conjunto que contém apenas o estado inicial da NFA
-    start_state = initial_state  # Usando o nome do estado inicial diretamente (sem vírgula)
-    queue.append(start_state)
-    dfa_states.append(start_state)
-    dfa[start_state] = {}
+#Função para converter AFN em AFD
+def afn_para_afd(afn, alfabeto, estado_inicial, estados_finais):
+    afd = {}
+    estados_afd = []
+    estados_finais_afd = []
+    fila = []
+    estado_inicial_afd = estado_inicial
+    fila.append(estado_inicial_afd)
+    estados_afd.append(estado_inicial_afd)
+    afd[estado_inicial_afd] = {}
 
-    # Processar a fila de estados
-    while queue:
-        current_state = queue.pop(0)
-        dfa[current_state] = {}
+    #Processar a fila de estados
+    while fila:
+        estado_atual = fila.pop(0)
+        afd[estado_atual] = {}
         
-        # Para cada símbolo do alfabeto
-        for symbol in alphabet:
-            # Determinar os estados alcançáveis a partir do estado atual
-            next_states = set()
-            for substate in current_state.split():
-                if substate in nfa and symbol in nfa[substate]:
-                    next_states.update(nfa[substate][symbol])
+        #Para cada símbolo do alfabeto
+        for simbolo in alfabeto:
+            proximos_estados = set()
+            for subestado in estado_atual.split():
+                if subestado in afn and simbolo in afn[subestado]:
+                    proximos_estados.update(afn[subestado][simbolo])
             
-            # Criar o novo estado (conjunto de estados da NFA) como uma string
-            next_state = " ".join(sorted(next_states))  # Juntando os estados com espaço
+            #Criar o novo estado (conjunto de estados da AFN) como uma string
+            proximo_estado = " ".join(sorted(proximos_estados))
             
-            # Adicionar transição no DFA
-            dfa[current_state][symbol] = [next_state]
+            #Adicionar transição no AFD
+            afd[estado_atual][simbolo] = [proximo_estado]
             
-            # Se o novo estado não estiver no DFA, adicionar à fila
-            if next_state not in dfa_states:
-                dfa_states.append(next_state)
-                queue.append(next_state)
+            #Se o novo estado não estiver no AFD, adicionar à fila
+            if proximo_estado not in estados_afd:
+                estados_afd.append(proximo_estado)
+                fila.append(proximo_estado)
     
-    # Determinar os estados finais do DFA
-    for dfa_state in dfa_states:
-        if any(state in final_states for state in dfa_state.split()):
-            dfa_final_states.append(dfa_state)
-    
+    #Determinar os estados finais do AFD
+    for estado_afd in estados_afd:
+        if any(estado in estados_finais for estado in estado_afd.split()):
+            estados_finais_afd.append(estado_afd)
 
-    return dfa, dfa_final_states
+    return afd, estados_finais_afd, estado_inicial_afd
 
-
-
-
-
-#COMEÇA A FUNÇÃO AQUI
-def reverse_dfa(dfa, initial_state, final_states, alphabet):
-    # Inicializar o autômato reverso
-    reversed_dfa = {state: {symbol: [] for symbol in alphabet} for state in dfa}
+def reverso_afd(afd, estado_inicial, estados_finais, alfabeto):
+    # Inicializar o AFD reverso com os mesmos estados e alfabeto
+    afd_reverso = {estado: {simbolo: [] for simbolo in alfabeto} for estado in afd}
     
     # Inverter as transições
-    for state, transitions in dfa.items():
-        for symbol, targets in transitions.items():
-            if not isinstance(targets, list):
-                targets = [targets]  # Certificar-se de que `targets` é uma lista
-            for target in targets:
-                if target not in reversed_dfa:
-                    reversed_dfa[target] = {symbol: [] for symbol in alphabet}
-                reversed_dfa[target][symbol].append(state)
+    for estado, transicoes in afd.items():
+        for simbolo, destinos in transicoes.items():
+            if not isinstance(destinos, list):
+                destinos = [destinos]  # Garantir que destinos seja uma lista
+            for destino in destinos:
+                if destino not in afd_reverso:
+                    afd_reverso[destino] = {simbolo: [] for simbolo in alfabeto}
+                afd_reverso[destino][simbolo].append(estado)
     
-    # Determinar o novo estado inicial (conjunto dos antigos estados finais)
-    reversed_initial_state = final_states[:]
+    # Criar um novo estado inicial único no reverso
+    novo_estado_inicial = "novo_estado_inicial"
+    afd_reverso[novo_estado_inicial] = {simbolo: [] for simbolo in alfabeto}
+    
+    # Adicionar transições epsilon para os antigos estados finais
+    for estado_final in estados_finais:
+        if "epsilon" not in afd_reverso[novo_estado_inicial]:
+            afd_reverso[novo_estado_inicial]["epsilon"] = []
+        afd_reverso[novo_estado_inicial]["epsilon"].append(estado_final)
     
     # Determinar os novos estados finais (o antigo estado inicial)
-    reversed_final_states = [initial_state]
+    estados_finais_reverso = [estado_inicial]
+
+    return afd_reverso, novo_estado_inicial, estados_finais_reverso
+
+
+
+
+#Função para descobrir o complemento do AFD
+def complemento_afd(afd, estados, estados_finais):
+    #Determinar os estados não finais
+    estados_nao_finais = [estado for estado in estados if estado not in estados_finais]
     
-    # Retornar o autômato reverso
-    return reversed_dfa, reversed_initial_state, reversed_final_states
+    #O complemento do DFA usa os estados não finais como novos estados finais
+    estados_finais_complemento = estados_nao_finais
+    return afd, estados_finais_complemento
 
 
-#ACABA A FUNÇÃO AQUI
+#Caminho do arquivo
+caminho_arquivo = "input.txt"
 
+afn, estados, alfabeto, estado_inicial, estados_finais, palavra = ler_afn(caminho_arquivo)
 
-def complement_dfa(dfa, states, initial_state, final_states):
-    # Determinar os estados não finais
-    non_final_states = [state for state in states if state not in final_states]
-    
-    # O complemento do DFA usa os estados não finais como novos estados finais
-    complemented_final_states = non_final_states
-    # O DFA original permanece o mesmo em termos de transições
-    return dfa, complemented_final_states
+print("\nAFN:")
+print(afn)
 
+#Converter AFN em AFD
+afd, estados_finais_afd, estado_inicial_afd = afn_para_afd(afn, alfabeto, estado_inicial, estados_finais)
 
+#Invertendo AFD
+afd_reverso, estado_inicial_reverso, estados_finais_reverso = reverso_afd(afd, estado_inicial, estados_finais, alfabeto) 
+print("\nAFD INVERTIDO")
+print(afd_reverso)
 
-
-# Caminho do arquivo
-file_path = "input.txt"
-
-# Processar o arquivo
-nfa, states, alphabet, initial_state, final_states, word = parse_nfa(file_path)
-
-# Exibir o NFA
-print("\nNFA:")
-print(nfa)
-
-# Converter NFA em DFA
-dfa, dfa_final_states = nfa_to_dfa(nfa, alphabet, initial_state, final_states)
-
-#Invertendo DFA
-dfa_reverso, incial_reverso, final_reverso = reverse_dfa(dfa, initial_state, final_states, alphabet) 
-print("\n DFA INVERTIDO")
-print(dfa_reverso)
-
-#Complemento DFA
-dfa_complemento, dfa_estado_final = complement_dfa(dfa, states, initial_state, final_states)
-print("\nDFA COMPLEMENTO")
-print(dfa_complemento)
+#Complemento AFD
+afd_complemento, estados_finais_complemento = complemento_afd(afd, estados, estados_finais)
+print("\nAFD COMPLEMENTO")
+print(afd_complemento)
 print("\nEstados finais: ")
-print(dfa_estado_final)
+print(estados_finais_complemento)
 
+#Exibir o AFD
+print("\nAFD:")
+print(afd)
 
-# Exibir o DFA
-print("\nDFA:")
-print(dfa)
+#Exibir estados finais do AFD
+print("\nEstados finais do AFD:", estados_finais_afd)
 
-# Exibir estados finais do DFA
-print("\nFinal states of DFA:", dfa_final_states)
+#Exibir tabelas
+print("\nTabela AFN:")
+tabela_afn = pd.DataFrame(afn)
+print(tabela_afn.transpose())
 
-# Exibir tabelas
-print("\nNFA Table:")
-nfa_table = pd.DataFrame(nfa)
-print(nfa_table.transpose())
+print("\nTabela AFD:")
+tabela_afd = pd.DataFrame(afd)
+print(tabela_afd.transpose())
 
-print("\nDFA Table:")
-dfa_table = pd.DataFrame(dfa)
-print(dfa_table.transpose())
-
-print("\nDFA reveso: ")
-dfa_reverso_table = pd.DataFrame(dfa_reverso)
-print(dfa_reverso_table.transpose())
-
-
-# Verificar se a palavra é aceita pelo DFA
-current_state = initial_state
-for symbol in word:
-    if symbol in dfa[current_state]:
-        current_state = dfa[current_state][symbol][0]
+#Verificar se a palavra é aceita pelo AFD
+estado_atual = estado_inicial
+for simbolo in palavra:
+    if simbolo in afd[estado_atual]:
+        estado_atual = afd[estado_atual][simbolo][0]
     else:
-        current_state = ""
+        estado_atual = ""
         break
 
-if current_state in dfa_final_states:
-    print(f"\nThe word '{word}' is accepted by the DFA.")
+if estado_atual in estados_finais_afd:
+    print(f"\nA palavra '{palavra}' é aceita pelo AFD.")
 else:
-    print(f"\nThe word '{word}' is not accepted by the DFA.")
+    print(f"\nA palavra '{palavra}' não é aceita pelo AFD.")
